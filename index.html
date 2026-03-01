@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto-clip • Color Remover</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(17, 24, 39, 0.72);
+      --panel-border: rgba(255, 255, 255, 0.15);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #60a5fa;
+      --accent-2: #22d3ee;
+      --success: #34d399;
+      --shadow: 0 20px 45px rgba(0, 0, 0, 0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0) 30%),
+        radial-gradient(circle at 90% 0%, rgba(96, 165, 250, 0.28) 0%, rgba(96, 165, 250, 0) 28%),
+        linear-gradient(140deg, #020617 5%, #0f172a 45%, #111827 100%);
+      padding: 24px;
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .heading {
+      margin: 0 0 8px;
+      font-size: 1.4rem;
+      letter-spacing: 0.2px;
+    }
+
+    .sub {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.94rem;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      border: 1px dashed rgba(255,255,255,0.25);
+      border-radius: 12px;
+      padding: 10px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.02);
+    }
+
+    input[type="color"] {
+      inline-size: 60px;
+      block-size: 40px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      font-weight: 700;
+      transition: transform .15s ease, box-shadow .2s ease;
+      box-shadow: 0 12px 28px rgba(96, 165, 250, 0.35);
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .stats {
+      font-size: 0.84rem;
+      color: #94a3b8;
+      min-height: 1.2rem;
+    }
+
+    .canvas-wrap {
+      min-height: 520px;
+      display: grid;
+      gap: 12px;
+      grid-template-rows: auto 1fr;
+    }
+
+    .canvas-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .checker {
+      border-radius: 16px;
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,0.16);
+      background:
+        linear-gradient(45deg, #ddd 25%, transparent 25%),
+        linear-gradient(-45deg, #ddd 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ddd 75%),
+        linear-gradient(-45deg, transparent 75%, #ddd 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 70vh;
+      border-radius: 10px;
+      box-shadow: 0 12px 20px rgba(0,0,0,0.2);
+      cursor: crosshair;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: rgba(52, 211, 153, 0.18);
+      color: #a7f3d0;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .canvas-wrap { min-height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel">
+      <h1 class="heading">Auto-clip: Color-to-Transparency</h1>
+      <p class="sub">Upload an image, choose a target color, set threshold fuzziness, and export a transparent PNG. You can also click directly on the image to sample a color.</p>
+
+      <div class="controls">
+        <div class="control">
+          <label for="fileInput">1) Select image</label>
+          <input id="fileInput" type="file" accept="image/*" />
+        </div>
+
+        <div class="control">
+          <label for="colorPicker">
+            <span>2) Pick color to remove</span>
+            <code id="colorValue">#ffffff</code>
+          </label>
+          <div class="row">
+            <input id="colorPicker" type="color" value="#ffffff" />
+            <small style="color:#94a3b8">Tip: Click image to sample color</small>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="threshold">
+            <span>3) Threshold (fuzziness)</span>
+            <strong id="thresholdValue">40</strong>
+          </label>
+          <input id="threshold" type="range" min="0" max="255" value="40" />
+        </div>
+
+        <div class="row" style="justify-content:space-between; gap:8px; flex-wrap:wrap;">
+          <button id="processBtn" class="btn" disabled>Remove Color</button>
+          <button id="downloadBtn" class="btn" disabled style="background:linear-gradient(135deg,#10b981,#22c55e); box-shadow:0 12px 28px rgba(34,197,94,.3);">Download PNG</button>
+        </div>
+
+        <div class="stats" id="stats">Upload an image to begin.</div>
+      </div>
+    </section>
+
+    <section class="panel canvas-wrap">
+      <div class="canvas-toolbar">
+        <span>Preview (transparent background checkerboard)</span>
+        <span class="pill">Click canvas to eyedrop</span>
+      </div>
+      <div class="checker">
+        <canvas id="canvas" width="900" height="600" aria-label="image preview"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const colorPicker = document.getElementById('colorPicker');
+    const colorValue = document.getElementById('colorValue');
+    const threshold = document.getElementById('threshold');
+    const thresholdValue = document.getElementById('thresholdValue');
+    const processBtn = document.getElementById('processBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const stats = document.getElementById('stats');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    let originalImageData = null;
+    let processed = false;
+
+    const hexToRgb = (hex) => {
+      const clean = hex.replace('#', '');
+      return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16),
+      };
+    };
+
+    const rgbToHex = ({ r, g, b }) => {
+      const toHex = (n) => n.toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    };
+
+    const updateControls = () => {
+      const hasImage = Boolean(originalImageData);
+      processBtn.disabled = !hasImage;
+      downloadBtn.disabled = !hasImage || !processed;
+    };
+
+    const fitCanvasToImage = (img) => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      processed = false;
+      updateControls();
+      stats.textContent = `Loaded ${img.width}×${img.height}. Pick a color to remove.`;
+    };
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      const img = new Image();
+      img.onload = () => fitCanvasToImage(img);
+      img.onerror = () => {
+        stats.textContent = 'Could not read that image file.';
+      };
+      img.src = URL.createObjectURL(file);
+    });
+
+    colorPicker.addEventListener('input', () => {
+      colorValue.textContent = colorPicker.value;
+    });
+
+    threshold.addEventListener('input', () => {
+      thresholdValue.textContent = threshold.value;
+    });
+
+    canvas.addEventListener('click', (event) => {
+      if (!originalImageData) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = Math.floor((event.clientX - rect.left) * scaleX);
+      const y = Math.floor((event.clientY - rect.top) * scaleY);
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const picked = { r: pixel[0], g: pixel[1], b: pixel[2] };
+      const hex = rgbToHex(picked);
+      colorPicker.value = hex;
+      colorValue.textContent = hex;
+      stats.textContent = `Sampled color ${hex} at (${x}, ${y}).`;
+    });
+
+    processBtn.addEventListener('click', () => {
+      if (!originalImageData) return;
+
+      const { r: tr, g: tg, b: tb } = hexToRgb(colorPicker.value);
+      const data = new Uint8ClampedArray(originalImageData.data);
+      const limit = Number(threshold.value);
+      const limitSq = limit * limit;
+      let removed = 0;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const dr = data[i] - tr;
+        const dg = data[i + 1] - tg;
+        const db = data[i + 2] - tb;
+        const distSq = dr * dr + dg * dg + db * db;
+
+        if (distSq <= limitSq) {
+          data[i + 3] = 0;
+          removed += 1;
+        }
+      }
+
+      const out = new ImageData(data, originalImageData.width, originalImageData.height);
+      ctx.putImageData(out, 0, 0);
+      processed = true;
+      updateControls();
+      const totalPixels = originalImageData.width * originalImageData.height;
+      const pct = ((removed / totalPixels) * 100).toFixed(2);
+      stats.textContent = `Removed ${removed.toLocaleString()} pixels (${pct}%) with threshold ${limit}.`;
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!processed) return;
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'auto-clip-transparent.png';
+      a.click();
+    });
+
+    colorValue.textContent = colorPicker.value;
+    thresholdValue.textContent = threshold.value;
+    updateControls();
+  </script>
+</body>
+</html>
