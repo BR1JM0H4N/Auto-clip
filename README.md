@@ -1,2 +1,2 @@
 # Auto-clip
-Remove pictures of selected color from the image
+Remove pixels of selected color from the image
