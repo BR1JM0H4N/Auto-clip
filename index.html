@@ -284,53 +284,7 @@
       downloadBtn.disabled = !hasImage || !processed;
     };
 
-    const fitCanvasToImage = (img) => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      processed = false;
-      updateControls();
-      stats.textContent = `Loaded ${img.width}×${img.height}. Pick a color to remove.`;
-    };
-
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-
-      const img = new Image();
-      img.onload = () => fitCanvasToImage(img);
-      img.onerror = () => {
-        stats.textContent = 'Could not read that image file.';
-      };
-      img.src = URL.createObjectURL(file);
-    });
-
-    colorPicker.addEventListener('input', () => {
-      colorValue.textContent = colorPicker.value;
-    });
-
-    threshold.addEventListener('input', () => {
-      thresholdValue.textContent = threshold.value;
-    });
-
-    canvas.addEventListener('click', (event) => {
-      if (!originalImageData) return;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const x = Math.floor((event.clientX - rect.left) * scaleX);
-      const y = Math.floor((event.clientY - rect.top) * scaleY);
-      const pixel = ctx.getImageData(x, y, 1, 1).data;
-      const picked = { r: pixel[0], g: pixel[1], b: pixel[2] };
-      const hex = rgbToHex(picked);
-      colorPicker.value = hex;
-      colorValue.textContent = hex;
-      stats.textContent = `Sampled color ${hex} at (${x}, ${y}).`;
-    });
-
-    processBtn.addEventListener('click', () => {
+    const removeSelectedColor = () => {
       if (!originalImageData) return;
 
       const { r: tr, g: tg, b: tb } = hexToRgb(colorPicker.value);
@@ -358,7 +312,61 @@
       const totalPixels = originalImageData.width * originalImageData.height;
       const pct = ((removed / totalPixels) * 100).toFixed(2);
       stats.textContent = `Removed ${removed.toLocaleString()} pixels (${pct}%) with threshold ${limit}.`;
+    };
+
+    const fitCanvasToImage = (img) => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      processed = false;
+      updateControls();
+      stats.textContent = `Loaded ${img.width}×${img.height}. Pick a color to remove.`;
+    };
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      const img = new Image();
+      img.onload = () => fitCanvasToImage(img);
+      img.onerror = () => {
+        stats.textContent = 'Could not read that image file.';
+      };
+      img.src = URL.createObjectURL(file);
     });
+
+    colorPicker.addEventListener('input', () => {
+      colorValue.textContent = colorPicker.value;
+      if (processed) {
+        removeSelectedColor();
+      }
+    });
+
+    threshold.addEventListener('input', () => {
+      thresholdValue.textContent = threshold.value;
+      if (processed) {
+        removeSelectedColor();
+      }
+    });
+
+    canvas.addEventListener('click', (event) => {
+      if (!originalImageData) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = Math.floor((event.clientX - rect.left) * scaleX);
+      const y = Math.floor((event.clientY - rect.top) * scaleY);
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const picked = { r: pixel[0], g: pixel[1], b: pixel[2] };
+      const hex = rgbToHex(picked);
+      colorPicker.value = hex;
+      colorValue.textContent = hex;
+      stats.textContent = `Sampled color ${hex} at (${x}, ${y}).`;
+    });
+
+    processBtn.addEventListener('click', removeSelectedColor);
 
     downloadBtn.addEventListener('click', () => {
       if (!processed) return;
